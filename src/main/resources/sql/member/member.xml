@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.amazing.member">
+
+<resultMap type="memberDto" id="memberResultMap">
+	<id 	column="USER_NO" 		property="userNo"/>
+	<result column="ID" 			property="id"/>
+	<result column="PASSWORD" 		property="passWord"/>
+	<result column="USERNAME" 		property="userName"/>
+	<result column="ADDRESS" 		property="address"/>
+	<result column="PHONE"			property="phone"/>
+	<result column="CRE_DATE" 		property="creDate"
+								javaType="java.util.Date"/>
+	<result column="MOD_DATE" 		property="modDate"
+								javaType="java.util.Date"/>
+	<result column="CASH"			property="cash"/>
+	<result column="AUTH"			property="admin"/>
+</resultMap>
+
+<!-- 회원존재확인 -->
+<select id="memberExist" parameterType="map" resultMap="memberResultMap">
+	SELECT USER_NO, ID, USERNAME, ADDRESS, PHONE, CASH, AUTH
+	FROM MEMBERS
+	WHERE ID = #{id} AND PASSWORD = #{passWord}	
+</select>
+
+<!-- 아이디 중복체크 -->
+<select id="memberIdCheck" parameterType="memberDto" resultMap="memberResultMap">
+	SELECT ID
+	FROM MEMBERS
+	WHERE ID = #{id}	
+</select>
+
+<!-- 회원아이디 찾기 -->
+<select id="memberIdFind" parameterType="map" resultMap="memberResultMap">
+	SELECT ID
+	FROM MEMBERS
+	WHERE USERNAME = #{userName} AND PHONE = #{phone}	
+</select>
+
+<!-- 	회원추가 -->
+<insert id="memberInsertOne" parameterType="com.edu.member.model.MemberDto"
+	useGeneratedKeys="true" keyProperty="userNo">
+	<selectKey keyProperty="userNo" resultType="int" order="BEFORE">
+		SELECT SEQ_MEMBERS_USER_NO.NEXTVAL FROM DUAL
+	</selectKey>
+	INSERT INTO MEMBERS
+	VALUE(USER_NO, ID, PASSWORD, USERNAME, PHONE, ADDRESS, CASH, CRE_DATE, MOD_DATE)
+	VALUES(#{userNo}, #{id}, #{passWord}
+		, #{userName}, #{phone}, #{address}, #{cash}, SYSDATE, SYSDATE)
+</insert>
+	
+<!-- 회원상세조회 -->
+<select id="memberSelectOne" parameterType="int" resultMap="memberResultMap">
+	SELECT USER_NO, ID, USERNAME, PHONE, ADDRESS, CASH, CRE_DATE
+	FROM MEMBERS
+	WHERE USER_NO = #{userNo}
+</select>
+
+<!-- 회원정보 수정 -->
+<update id="memberUpdateOne" parameterType="memberDto">
+	UPDATE MEMBERS
+	<set>
+		<if test="id != ''">ID = #{id},</if> 
+		<if test="userName != ''">USERNAME = #{userName},</if> 
+		<if test="phone != ''">PHONE = #{phone},</if> 
+		<if test="address != ''">ADDRESS = #{address},</if> 
+		MOD_DATE = SYSDATE
+	</set>
+	WHERE USER_NO = #{userNo}
+</update>
+
+<!-- 패스워드 찾기 -->
+<update id="memberPwFind" parameterType="memberDto">
+	UPDATE MEMBERS
+	SET PASSWORD = #{passWord}
+	WHERE USER_NO = #{userNo} 
+</update>
+
+<!-- 패스워드 재설정 -->
+<select id="memberPwExist" parameterType="map" resultMap="memberResultMap">
+	SELECT USER_NO, ID, USERNAME, PASSWORD, PHONE, CASH
+	FROM MEMBERS
+	WHERE ID = #{id} AND USERNAME = #{userName} AND PHONE = #{phone}  	
+</select>
+
+<!--캐시 충전 -->
+<update id="memberCashCharge" parameterType="memberDto">
+	UPDATE MEMBERS
+	<set>
+		<if test="cash != ''">CASH = CASH + #{cash},</if> 
+		MOD_DATE = SYSDATE
+	</set>
+	WHERE USER_NO = #{userNo}
+</update>
+
+<select id="memberCashSelectOne" parameterType="int" resultType="int">
+	SELECT CASH
+	FROM MEMBERS
+	WHERE USER_NO = #{userNo}
+</select>
+
+<update id="memberCashUpdateOne" parameterType="map">
+	UPDATE MEMBERS
+	SET CASH = #{cash}
+	WHERE USER_NO = #{userNo}
+</update>
+
+<!-- 	회원삭제 -->
+<delete id="memberDeleteOne" parameterType="int">
+	DELETE FROM MEMBERS
+	WHERE USER_NO = #{value}
+</delete>
+	
+<select id="memberSelectTotalCount" 
+	resultType="java.lang.Integer">
+	SELECT COUNT(*)
+	FROM MEMBERS
+</select>
+
+</mapper>

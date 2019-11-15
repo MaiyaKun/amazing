@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.amazing.product">
+
+	<sql id="search">
+		<choose>
+			<when test="searchOption == 'all'">
+				WHERE 	TITLE LIKE '%'||#{keyword}||'%'
+                OR 		PD_NAME LIKE '%'||#{keyword}||'%' 
+			</when>
+			<otherwise>
+				WHERE 	${searchOption} LIKE '%'||#{keyword}||'%'
+			</otherwise>
+		</choose>
+	</sql>
+	
+
+	<resultMap type="productDto" id="productResultMap">
+		<id 	column="PRODUCT_NO" 				property="productNo"/>
+		<result column="GENRE_NO" 			property="genreNo"/>
+		<result column="TITLE" 			property="title"/>
+		<result column="TITLE_FILE" 			property="titleFile"/>
+		<result column="PD_NAME" 			property="pdName"/>
+		<result column="PD_FILE" 			property="pdFile"/>
+		<result column="PRICE" 			property="price"/>
+		<result column="STOCK" 			property="stock"/>
+		<result column="ACTOR" 			property="actor"/>
+		<result column="ADMIN_COM" 			property="adminCom"/>
+		<result column="ADMIN_SCORE" 			property="adminScore"/>
+		<result column="STORY" 			property="story"/>
+		<result column="CRE_DATE" 			property="creDate"
+									javaType="java.util.Date"/>
+		<result column="MOD_DATE" 			property="modDate"
+									javaType="java.util.Date"/>
+	</resultMap>
+	
+	<select id="productSelectList" parameterType="map" resultMap="productResultMap">
+<!-- 		SELECT PRODUCT_NO, TITLE, TITLE_FILE, PD_NAME, ADMIN_SCORE, PRICE -->
+<!-- 		, CRE_DATE -->
+<!-- 		FROM PRODUCT -->
+<!-- 		ORDER BY PRODUCT_NO DESC -->
+		
+		SELECT PRODUCT_NO, TITLE, TITLE_FILE, PD_NAME, PRICE, ADMIN_SCORE, CRE_DATE
+		FROM (SELECT ROWNUM RNUM, M.PRODUCT_NO, M.TITLE, M.TITLE_FILE, M.PD_NAME, M.PRICE, M.ADMIN_SCORE, M.CRE_DATE
+		    FROM (SELECT PRODUCT_NO, TITLE, TITLE_FILE, PD_NAME, PRICE, ADMIN_SCORE, CRE_DATE
+		        FROM PRODUCT
+		        <include refid="search"></include>
+		        ORDER BY PRODUCT_NO DESC
+		        ) M
+		    )
+		WHERE RNUM BETWEEN ${start} AND ${end}
+	</select>
+
+	<select id="productSelectTotalCount" parameterType="map"
+		resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRODUCT
+		<include refid="search"></include>
+	</select>
+	
+	<select id="productGenreSelectList" 
+		resultType="map">
+		SELECT GENRE_NO, GNAME 
+		FROM GENRE
+	</select>
+	
+	<insert id="productInsertOne" parameterType="com.edu.product.model.ProductDto">
+		INSERT INTO PRODUCT
+			<choose>
+				<when test='adminCom == null and story == null'>
+					VALUE(PRODUCT_NO, GENRE_NO, TITLE, TITLE_FILE, PD_NAME
+					    , PD_FILE, PRICE, STOCK, ACTOR
+					    , ADMIN_SCORE, CRE_DATE, MOD_DATE)
+					VALUES(SEQ_PRODUCT_PRODUCT_NO.NEXTVAL, ${genreNo}, #{title}, #{titleFile}, #{pdName}
+					    , #{pdFile}, ${price}, ${stock}, #{actor}
+					    , ${adminScore}, SYSDATE, SYSDATE)
+				</when>
+				<when test='adminCom == null and story != null'>
+					VALUE(PRODUCT_NO, GENRE_NO, TITLE, TITLE_FILE, PD_NAME
+					    , PD_FILE, PRICE, STOCK, ACTOR
+					    , ADMIN_SCORE, STORY, CRE_DATE, MOD_DATE)
+					VALUES(SEQ_PRODUCT_PRODUCT_NO.NEXTVAL, ${genreNo}, #{title}, #{titleFile}, #{pdName}
+					    , #{pdFile}, ${price}, ${stock}, #{actor}
+					    , ${adminScore}, #{story}, SYSDATE, SYSDATE)
+				</when>
+				<when test='adminCom != null and story == null'>
+					VALUE(PRODUCT_NO, GENRE_NO, TITLE, TITLE_FILE, PD_NAME
+					    , PD_FILE, PRICE, STOCK, ACTOR, ADMIN_COM
+					    , ADMIN_SCORE, CRE_DATE, MOD_DATE)
+					VALUES(SEQ_PRODUCT_PRODUCT_NO.NEXTVAL, ${genreNo}, #{title}, #{titleFile}, #{pdName}
+					    , #{pdFile}, ${price}, ${stock}, #{actor}, #{adminCom}
+					    , ${adminScore}, SYSDATE, SYSDATE)
+				</when>
+			</choose>
+			VALUE(PRODUCT_NO, GENRE_NO, TITLE, TITLE_FILE, PD_NAME
+			    , PD_FILE, PRICE, STOCK, ACTOR, ADMIN_COM
+			    , ADMIN_SCORE, STORY, CRE_DATE, MOD_DATE)
+			VALUES(SEQ_PRODUCT_PRODUCT_NO.NEXTVAL, ${genreNo}, #{title}, #{titleFile}, #{pdName}
+			    , #{pdFile}, ${price}, ${stock}, #{actor}, #{adminCom}
+			    , ${adminScore}, #{story}, SYSDATE, SYSDATE)
+	</insert>
+	
+	<select id="productDetailSelectOne" parameterType="int" resultMap="productResultMap">
+		SELECT PRODUCT_NO, GENRE_NO, TITLE, TITLE_FILE, PD_NAME
+		    , PD_FILE, PRICE, STOCK, ACTOR
+		    , ADMIN_COM, ADMIN_SCORE, STORY, CRE_DATE, MOD_DATE
+		FROM PRODUCT
+		WHERE PRODUCT_NO = #{productNo}
+	</select>
+	
+	<update id="productUpdateOne" parameterType="productDto">
+		UPDATE PRODUCT
+		SET GENRE_NO = #{genreNo}, TITLE = #{title}, 
+		<choose>
+			<when test='titleFile != "noChange" and pdFile != "noChange"'>
+				TITLE_FILE = #{titleFile},
+				PD_FILE = #{pdFile}, 
+			</when>
+			<when test='titleFile != "noChange" and pdFile == "noChange"'>
+				TITLE_FILE = #{titleFile},
+			</when>
+			<when test='titleFile == "noChange" and pdFile != "noChange"'>
+				PD_FILE = #{pdFile}, 
+			</when>
+		</choose>
+		PD_NAME = #{pdName}, PRICE = #{price},
+		STOCK = #{stock}, ACTOR = #{actor}, ADMIN_SCORE = #{adminScore},
+		ADMIN_COM = #{adminCom},
+		STORY = #{story},
+		MOD_DATE = SYSDATE
+		WHERE PRODUCT_NO = #{productNo}
+	</update>
+	
+	<select id="productStoredFileSelectOne" parameterType="int" resultType="map">
+		SELECT TITLE_FILE, PD_FILE
+		FROM PRODUCT
+		WHERE PRODUCT_NO = #{productNo}
+	</select>
+	
+	<select id="genreSelectOne" parameterType="int" resultType="String">
+		SELECT GNAME
+		FROM GENRE
+		WHERE GENRE_NO = #{genreNo}
+	</select>
+	
+	<select id="userScoreSelectOne" parameterType="int" resultType="Double">
+		SELECT NVL(ROUND(AVG(score), 2), 10) AS AVG_SCORE
+		FROM PRODUCT_COMMENT
+		WHERE PRODUCT_NO = #{productNo}
+	</select>
+	
+	<select id="productComSelectTotalCount" parameterType="int" resultType="int">
+		SELECT COUNT(*)
+		FROM PRODUCT_COMMENT
+		WHERE PRODUCT_NO = #{productNo}
+	</select>
+
+	<select id="productComSelectList" parameterType="map" resultType="map">
+		SELECT PRO_COM_NO, USER_NO, USERNAME, STORY, SCORE, CRE_DATE
+		FROM(
+		    SELECT ROWNUM RNUM, C.PRO_COM_NO, C.USER_NO, C.USERNAME, C.STORY, C.SCORE, C.CRE_DATE
+		    FROM(
+		        SELECT M.USER_NO, M.USERNAME, P.PRO_COM_NO, P.STORY, P.SCORE, P.CRE_DATE
+		        FROM PRODUCT_COMMENT P
+		        JOIN MEMBERS M
+		        ON P.USER_NO = M.USER_NO
+		        WHERE PRODUCT_NO = #{productNo}
+		        ORDER BY P.PRO_COM_NO DESC) C
+		    )
+		WHERE RNUM BETWEEN #{start} AND #{end}
+	</select>
+	
+	<insert id="productReplyInsertOne" parameterType="map">
+		INSERT INTO PRODUCT_COMMENT
+		VALUE(PRO_COM_NO, PRODUCT_NO, USER_NO, STORY, SCORE, CRE_DATE)
+		VALUES(SEQ_PRODUCT_COMMENT_PRO_COM_NO.NEXTVAL, #{productNo}
+		, #{userNo}, #{story}, #{score}, SYSDATE)
+	</insert>
+
+	<delete id="productReplyDeleteOne" parameterType="int">
+		DELETE FROM PRODUCT_COMMENT
+		WHERE PRO_COM_NO = #{no}
+	</delete>
+	
+	<delete id="productReplyDeleteList" parameterType="int">
+		DELETE FROM PRODUCT_COMMENT
+		WHERE PRODUCT_NO = #{productNo}
+	</delete>
+	
+	<delete id="productDeleteOne" parameterType="int">
+		DELETE FROM PRODUCT
+		WHERE PRODUCT_NO = #{productNo}
+	</delete>
+	
+	<select id="productPaymentReady" parameterType="int" resultMap="productResultMap">
+		SELECT PRODUCT_NO, TITLE, TITLE_FILE, PRICE, STOCK
+		FROM PRODUCT
+		WHERE PRODUCT_NO = #{productNo}
+	</select>
+	
+	<insert id="productBasketInsertOne" parameterType="map">
+		INSERT INTO BASKET
+		VALUE(BASKET_NO, PRODUCT_NO, USER_NO, QUANTITY)
+		VALUES(SEQ_BASKET_BASKET_NO.NEXTVAL, #{productNo}, #{userNo}, #{quantity})
+	</insert>
+	
+	<select id="productBasketSelectList" parameterType="int" resultType="map">
+		SELECT P.TITLE_FILE, B.BASKET_NO, P.TITLE, B.QUANTITY, P.PRICE
+		FROM BASKET B
+		JOIN MEMBERS M
+		ON B.USER_NO = M.USER_NO
+		JOIN PRODUCT P
+		ON B.PRODUCT_NO = P.PRODUCT_NO
+		WHERE B.USER_NO = #{userNo}
+	</select>
+	
+	<select id="productBasketCount" parameterType="int" resultType="int">
+		SELECT COUNT(*)
+		FROM BASKET
+		WHERE USER_NO = #{userNo}
+	</select>
+	
+	<update id="BasketQuantityUpdateOne" parameterType="map">
+		UPDATE BASKET
+		SET QUANTITY = #{quantity}
+		WHERE BASKET_NO = #{basketNo}
+	</update>
+	
+	<delete id="BasketDeleteOne" parameterType="int">
+		DELETE FROM BASKET
+		WHERE BASKET_NO = #{basketNo}
+	</delete>
+	
+	<select id="productPurchaseOne" parameterType="int" resultType="map">
+		SELECT PRODUCT_NO, TITLE, PRICE
+		FROM PRODUCT
+		WHERE PRODUCT_NO = #{productNo}
+	</select>
+	
+	<select id="productMemberSelectOne" parameterType="int" resultType="MemberDto">
+		SELECT USER_NO, USERNAME, ADDRESS, PHONE, CASH
+		FROM MEMBERS
+		WHERE USER_NO = #{userNo}
+	</select>
+	
+	<select id="productBasketSelectOne" parameterType="int" resultType="map">
+		SELECT B.BASKET_NO, P.TITLE, P.PRICE, B.QUANTITY
+		FROM BASKET B
+		JOIN PRODUCT P
+		ON B.PRODUCT_NO = P.PRODUCT_NO
+		WHERE B.BASKET_NO = #{basketNo}
+	</select>
+	
+	<insert id="productOrderInsertOne" parameterType="map">
+		INSERT INTO ORDER_LIST
+		VALUE(ORDER_NO, ORDER_IDX, USER_NO, PRODUCT_NO, QUANTITY
+			, PICK_NAME, PICK_ADDR, PICK_PHONE, CRE_DATE)
+		VALUES(SEQ_ORDER_LIST_ORDER_NO.nextval, #{orderIdx}, #{userNo}
+			, #{productNo}, #{quantity}, #{pickName}, #{pickAddress}
+			, #{pickPhone}, SYSDATE)
+	</insert>
+	
+	<update id="memberOrderCashUpdate" parameterType="map">
+		UPDATE MEMBERS
+		SET CASH = CASH - #{sum}
+		WHERE USER_NO = #{userNo}
+	</update>
+	
+	<update id="productStockUpdateOne" parameterType="map">
+		UPDATE PRODUCT
+		SET STOCK = STOCK - #{quantity}
+		WHERE PRODUCT_NO = #{productNo}
+	</update>
+	
+	<select id="basketOrderSelectOne" parameterType="int" resultType="map">
+		SELECT B.BASKET_NO, B.PRODUCT_NO, B.QUANTITY
+		FROM BASKET B
+		WHERE BASKET_NO = #{basketNo}
+	</select>
+	
+	<delete id="basketDeleteOne" parameterType="int">
+		DELETE FROM BASKET
+		WHERE BASKET_NO = #{basketNo}
+	</delete>
+	
+	<select id="orderListSelectList" parameterType="map" resultType="map">
+		SELECT O.*
+		FROM(
+			SELECT ROWNUM AS RNUM, O.*
+			FROM
+				(SELECT ORDER_IDX
+				    , MIN(P.TITLE) KEEP(DENSE_RANK FIRST ORDER BY O.ORDER_IDX) AS TITLE
+				    , COUNT(*) AS COUNT
+				    , SUM(O.QUANTITY * P.PRICE) AS SUM
+				    , MIN(M.USER_NO) KEEP(DENSE_RANK FIRST ORDER BY O.PRODUCT_NO) AS USER_NO
+				    , MIN(M.USERNAME) KEEP(DENSE_RANK FIRST ORDER BY O.PRODUCT_NO) AS USERNAME
+				    , MIN(O.PICK_NAME) KEEP(DENSE_RANK FIRST ORDER BY O.PRODUCT_NO) AS PICK_NAME
+				    , MIN(O.CRE_DATE) KEEP(DENSE_RANK FIRST ORDER BY O.PRODUCT_NO) AS CRE_DATE
+				FROM ORDER_LIST O
+				JOIN PRODUCT P
+				ON O.PRODUCT_NO = P.PRODUCT_NO
+				JOIN MEMBERS M
+				ON M.USER_NO = O.USER_NO
+				<if test='userAdmin == "F"'>
+					WHERE O.USER_NO = #{userNo}
+				</if>
+				GROUP BY ORDER_IDX
+				ORDER BY CRE_DATE DESC) O
+			) O
+		WHERE RNUM BETWEEN #{start} AND #{end}
+	</select>
+	
+	<select id="orderTotalCount" parameterType="map" resultType="int">
+		SELECT COUNT(O.ORDER_IDX) AS COUNT
+		FROM( 
+		    SELECT ORDER_IDX
+		    FROM ORDER_LIST
+		    <if test='userAdmin == "F"'>
+		    	WHERE USER_NO = #{userNo}
+		    </if>
+		    GROUP BY ORDER_IDX) O
+	</select>
+	
+	<select id="orderDetailSelectList" parameterType="string" resultType="map">
+		SELECT O.ORDER_IDX, P.PRODUCT_NO, P.TITLE, P.PRICE, O.QUANTITY, O.CRE_DATE
+		FROM ORDER_LIST O
+		JOIN PRODUCT P
+		ON O.PRODUCT_NO = P.PRODUCT_NO
+		WHERE O.ORDER_IDX = #{orderIdx}
+	</select>
+	
+	<select id="orderDetailSumSelectOne" parameterType="string" resultType="int">
+		SELECT SUM(P.PRICE * O.QUANTITY) AS SUM
+		FROM ORDER_LIST O
+		JOIN PRODUCT P
+		ON O.PRODUCT_NO = P.PRODUCT_NO
+		WHERE O.ORDER_IDX = #{orderIdx}
+		GROUP BY ORDER_IDX
+	</select>
+	
+	<select id="orderDetailUserSelectOne" parameterType="string" resultType="map">
+		SELECT O.ORDER_IDX, M.USERNAME, M.ADDRESS, M.PHONE, O.PICK_NAME, O.PICK_ADDR, O.PICK_PHONE
+		FROM ORDER_LIST O
+		JOIN MEMBERS M
+		ON O.USER_NO = M.USER_NO
+		WHERE O.ORDER_IDX = #{orderIdx}
+		AND ROWNUM = 1
+	</select>
+	
+	<delete id="orderDeleteOne" parameterType="string">
+		DELETE FROM ORDER_LIST
+		WHERE ORDER_IDX = #{orderIdx}
+	</delete>
+</mapper>

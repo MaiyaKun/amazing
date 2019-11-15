@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.amazing.board">
+
+	<!-- 게시판 관련 -->
+	<resultMap type="boardDto" id="boardResultMap">
+		<id column="STR_NO" property="strNo" />
+		<result column="USER_NO" property="userNo" />
+		<result column="USERNAME" property="userName" />
+		<result column="TITLE" property="title" />
+		<result column="STORY" property="story" />
+		<result column="CRE_DATE" property="creDate"
+			javaType="java.util.Date" />
+		<result column="MOD_DATE" property="modDate"
+			javaType="java.util.Date" />
+	</resultMap>
+
+	<!-- 댓글 관련 -->
+	<resultMap type="boardCommDto" id="boardCommResultMap">
+		<id column="LIST_COM_NO" property="comNo" />
+		<result column="STR_NO" property="strNo" />
+		<result column="USER_NO" property="userNo" />
+		<result column="STORY" property="story" />
+		<result column="CRE_DATE" property="creDate"
+			javaType="java.util.Date" />
+	</resultMap>
+
+	<!-- 검색 기능 -->
+	<sql id="search">
+		<choose>
+			<when test="searchOption == 'all'">
+				WHERE 	M.USERNAME LIKE '%'||#{keyword}||'%'
+                OR 		B.TITLE LIKE '%'||#{keyword}||'%' 
+			</when>
+			<otherwise>
+				WHERE 	${searchOption} LIKE '%'||#{keyword}||'%'
+			</otherwise>
+		</choose>
+	</sql>
+
+	<!-- 게시판 리스트 -->
+	<select id="boardSelectList" resultMap="boardResultMap">
+		SELECT STR_NO, TITLE, USERNAME, CRE_DATE
+		FROM(SELECT ROWNUM RNUM, R.STR_NO, R.TITLE, R.USERNAME, R.CRE_DATE
+			 FROM(SELECT B.STR_NO, B.TITLE, M.USERNAME, B.CRE_DATE
+  				  FROM BOARD B
+ 				  JOIN MEMBERS M
+				  ON B.USER_NO = M.USER_NO
+				  <include refid="search"></include>
+				  ORDER BY STR_NO DESC)R
+			 )
+		WHERE RNUM BETWEEN #{start} AND #{end}
+	</select>
+	
+	<select id="boardSelectTotalCount" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM BOARD B
+		JOIN MEMBERS M
+		ON B.USER_NO = M.USER_NO
+		<include refid="search"></include>
+	</select>
+
+	<!-- 게시판 조회 -->
+	<select id="boardSelectOne" resultMap="boardResultMap">
+		SELECT B.STR_NO, M.USERNAME , B.TITLE, B.STORY, B.CRE_DATE, B.MOD_DATE, B.USER_NO
+		FROM BOARD B
+		JOIN MEMBERS M
+		ON B.USER_NO = M.USER_NO
+		WHERE STR_NO = #{strNo}
+	</select>
+
+	<!-- 게시글 등록 -->
+	<insert id="boardInsertOne" parameterType="boardDto">
+		INSERT INTO BOARD
+		VALUE(STR_NO, USER_NO, TITLE, STORY, CRE_DATE, MOD_DATE)
+		VALUES(SEQ_BOARD_STR_NO.nextval, #{userNo}, #{title}, #{story},
+		SYSDATE, SYSDATE)
+	</insert>
+
+	<!-- 게시글 수정 -->
+	<update id="boardUpdateOne" parameterType="boardDto">
+		UPDATE BOARD
+		<set>
+			<if test="title != ''">TITLE = #{title},</if>
+			<if test="story != ''">STORY = #{story},</if>
+			MOD_DATE = SYSDATE
+		</set>
+		WHERE STR_NO = #{strNo}
+	</update>
+
+	<!-- 댓글 조회 -->
+	<select id="boardCommSelectList" resultType="map">
+		SELECT M.USERNAME, C.CRE_DATE, C.STORY, C.LIST_COM_NO, M.USER_NO
+		FROM BOARD B
+		JOIN BOARD_COMMENT C
+		ON B.STR_NO = C.STR_NO
+		JOIN MEMBERS M
+		ON M.USER_NO = C.USER_NO
+		WHERE B.STR_NO = #{strNo}
+		ORDER BY C.LIST_COM_NO ASC
+	</select>
+
+	<!-- 댓글 등록 -->
+	<insert id="boardCommInsertOne" parameterType="boardCommDto">
+		INSERT INTO BOARD_COMMENT
+		VALUE(LIST_COM_NO, STR_NO, USER_NO, STORY, CRE_DATE)
+		VALUES(SEQ_BOARD_COMMENT_LIST_COM_NO.NEXTVAL, #{strNo}, #{userNo}, #{story}, SYSDATE)
+	</insert>
+
+	<!-- 게시글 삭제 -->
+	<delete id="boardCommDeleteAll" parameterType="boardCommDto">
+		DELETE FROM BOARD_COMMENT
+		WHERE STR_NO = #{strNo}
+	</delete>
+
+	<delete id="boardDeleteOne" parameterType="boardDto">
+		DELETE FROM BOARD
+		WHERE STR_NO = #{strNo}
+	</delete>
+	
+	<!-- 본인 댓글 삭제 -->
+	<delete id="boardCommDeleteOne" parameterType="int">
+		DELETE FROM BOARD_COMMENT
+		WHERE LIST_COM_NO = #{comNo}
+	</delete>
+	
+	<!-- 댓글 수정 -->
+	<update id="boardCommUpdateOne" parameterType="boardCommDto">
+		UPDATE BOARD_COMMENT
+		SET STORY = #{story}, CRE_DATE = SYSDATE
+		WHERE LIST_COM_NO = #{comNo}
+	</update>
+</mapper>

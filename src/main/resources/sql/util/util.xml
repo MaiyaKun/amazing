@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.amazing.util">
+		
+	<insert id="insertFile" parameterType="map">
+		INSERT INTO TB_FILE
+		VALUE	(IDX, PARENT_SEQ, ORIGINAL_FILE_NAME,
+		        	STORED_FILE_NAME, FILE_SIZE, CRE_DATE)
+		VALUES	(TB_FILE_IDX_SEQ.NEXTVAL, #{parentSeq}, #{original_file_name}
+		    		, #{stored_file_name}, #{file_size}, SYSDATE)
+	</insert>
+	
+	<select id="fileSelectList" parameterType="int"
+		resultType="map">
+		SELECT IDX, ORIGINAL_FILE_NAME, STORED_FILE_NAME
+	    	, ROUND(FILE_SIZE / 1024, 1) AS FILE_SIZE
+		FROM TB_FILE
+		WHERE PARENT_SEQ = #{no}
+	</select>
+	
+	<delete id="fileDelete" parameterType="int">
+		DELETE FROM TB_FILE
+		WHERE PARENT_SEQ = #{no}
+	</delete>
+	
+	<select id="fileSelectStoredFileName" parameterType="int"
+		resultType="map">
+		SELECT IDX, STORED_FILE_NAME
+		FROM TB_FILE
+		WHERE PARENT_SEQ = #{no}
+	</select>
+	
+</mapper>
